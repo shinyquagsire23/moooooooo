@@ -11,7 +11,7 @@ static long time_us()
 }
 
 static uint64_t mmio_timer_read(struct uc_struct* uc, void *opaque, uint64_t addr, unsigned size) {
-    printf(">>> mmio timer read 0x%08" PRIx64 "\n", addr);
+    //printf(">>> mmio timer read 0x%08" PRIx64 "\n", addr);
 
     switch (addr)
     {

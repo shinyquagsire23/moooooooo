@@ -61,7 +61,7 @@ static uint64_t mmio_gicd_read(struct uc_struct* uc, void *opaque, uint64_t addr
             
         case GICD_TYPER:
             printf(">>> mmio gicd read GICD_TYPER (core %u)\n", core);
-            return 2 | (3 << 5) | (1 << 10) | (0x1F << 11);//gicd_regs_set[core].typer;
+            return 6 | (3 << 5) | (1 << 10) | (0x1F << 11);//gicd_regs_set[core].typer;
             
         case GICD_IIDR:
             printf(">>> mmio gicd read GICD_IIDR (core %u)\n", core);

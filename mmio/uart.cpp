@@ -46,7 +46,8 @@ static void mmio_uart_write(struct uc_struct* uc, void *opaque, uint64_t addr, u
     switch (addr_shifted)
     {
         case UART_THR_DLAB_0_0:
-            if (val)
+            if ((uint8_t)val > 0x7F){}
+            else if (val != '\n')
                 fifos[id] += val;
             else
             {
