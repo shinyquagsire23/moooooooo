@@ -6,24 +6,24 @@ OBJS = $(foreach dir,$(SRC_DIR),$(subst .c,.o,$(wildcard $(dir)/*.c))) $(foreach
 OUTPUT = mooooooo
 CXXFLAGS = -Wall -g -I. -Iunicorn/include -std=c++17
 CFLAGS = -I. -Iunicorn/include -std=gnu11
-LIBS = -lpthread unicorn/libunicorn.a -lstdc++fs
+LIBS = -pthread unicorn/libunicorn.a -lstdc++fs
 CC = gcc
 CXX = g++
 ifeq ($(OS),Windows_NT)
     #Windows Build CFG
-    CFLAGS += 
-    LIBS += 
+    CFLAGS +=
+    LIBS +=
 else
     UNAME_S := $(shell uname -s)
     ifeq ($(UNAME_S),Darwin)
         # OS X
         CFLAGS +=
-        LIBS += 
+        LIBS +=
     else
         # Linux
-        CFLAGS += 
-        CXXFLAGS += 
-        LIBS += 
+        CFLAGS +=
+        CXXFLAGS +=
+        LIBS +=
     endif
 endif
 

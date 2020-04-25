@@ -31,6 +31,10 @@
 #define KADDRESS_800 0x80060000
 #define PADDRESS_800 0x800F5000
 
+#define SEVL 0xD50320BF
+#define WFE 0xD503205F
+#define WFE 0xD503205F
+
 #define DRAM_SIZE (0x40000000 * 1)
 void* dram;
 void* dram_2;
@@ -414,10 +418,9 @@ static void hook_exception(uc_engine *uc, uint32_t exceptno, void *user_data)
                 args[0] = 0;
 
                 pc = args[2];
+                uc_reg_write(cores[args[1]], UC_ARM64_REG_X0, &args[3]);
                 uc_reg_write(cores[args[1]], UC_ARM64_REG_PC, &pc);
                 cores_online[args[1]] = true;
-
-                //TODO context
 
                 break;
             case 0xc3000004:
@@ -548,6 +551,28 @@ static void hook_block(uc_engine *uc, uint64_t address, uint32_t size, void *use
 static void hook_code(uc_engine *uc, uint64_t address, uint32_t size, void *user_data)
 {
     static uint64_t last_pc[2];
+    static bool g_has_sevl[4] = {};
+    static bool g_should_stop[4] = {};
+
+    const auto core = uc_get_core(uc);
+
+    if (g_should_stop[core]) {
+        //printf(">>> Core %u: Stopping due to WFE without SEVL\n", core);
+        uc_emu_stop(uc);
+        g_should_stop[core] = false;
+    }
+
+    uint32_t insn;
+    if (!uc_mem_read(uc, address, &insn, sizeof(insn))) {
+        if (insn == SEVL) {
+            g_has_sevl[core] = true;
+        } else if (insn == WFE) {
+            if (!g_has_sevl[core]) {
+                g_should_stop[core] = true;
+            }
+            g_has_sevl[core] = false;
+        }
+    }
 
     if (last_pc[0] == address && last_pc[0] == last_pc[1] && !uc_quit)
     {
