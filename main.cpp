@@ -61,7 +61,7 @@ uint64_t ttb_vaddr_sizes[3] = {0x40000000, 0x200000, 0x1000};
 
 uc_engine *cores[4];
 uc_context *core_contexts[4];
-bool cores_online[4] = {false, false, false, false};    
+bool cores_online[4] = {false, false, false, false};
 
 void* paddr_to_alloc(uint64_t addr)
 {
@@ -81,14 +81,14 @@ void* paddr_to_alloc(uint64_t addr)
     {
         return (void*)(dram_4 + (addr - DRAM - (DRAM_SIZE * 3)));
     }
-    
+
     return nullptr;
 }
 
 int uc_get_core(uc_engine *uc)
 {
     uint64_t core;
-    
+
     uc_reg_read(uc, UC_ARM64_REG_MPIDR_EL1, &core);
     return core & 0xF;
 }
@@ -97,7 +97,7 @@ static void uc_unmap_all(uc_engine *uc)
 {
     uc_mem_region *regions;
     uint32_t count;
-    
+
     uc_mem_regions(uc, &regions, &count);
     for (uint32_t i = 0; i < count; i++)
     {
@@ -109,7 +109,7 @@ static void uc_unmap_all(uc_engine *uc)
 static uc_err uc_mem_map_wrap(uc_engine *uc, uint64_t addr, size_t size, uint32_t prot, void* ptr)
 {
     uint8_t test;
-    
+
     uc_err err = uc_mem_read(uc, addr, &test, 1);
     if (err)
     {
@@ -125,7 +125,7 @@ static void uc_mmu_level_iterate(uc_engine *uc, uint64_t addr, uint64_t base, in
         printf("lv%u bad addr %016llx\n", level, addr);
         return;
     }
-    
+
     for (int i = 0; i < TTB_ENTRIES; i++)
     {
         uint64_t val = *(uint64_t*)(paddr_to_alloc(addr) + (i * 8));
@@ -134,31 +134,31 @@ static void uc_mmu_level_iterate(uc_engine *uc, uint64_t addr, uint64_t base, in
         uint16_t val_upper_attr = (val & TTB_ENTRY_ATTR_MASK) >> TTB_ENTRY_ATTR_SHIFT;
         uint16_t val_lower_attr = (val & TTB_ENTRY_LOWER_ATTR_MASK) >> 2;
         uint64_t vaddr = base + ttb_vaddr_sizes[level] * i | 0xffffff8000000000; //TODO: 64-bit vaddrs?
-        
+
         if (val)
         {
             if (!check || (check >= vaddr && check <= vaddr + 0x1000))
             {
                 printf("lv%u idx %03x vaddr %016llx type %x addr %016llx low %04x high %04x\n", level + 1, i, vaddr, val_type, val_addr, val_lower_attr, val_upper_attr);
             }
-            
+
             if (val_type == 3 && level < 2)
             {
                 //printf("descend %016llx\n", val_addr);
                 uc_mmu_level_iterate(uc, val_addr, vaddr, level + 1, check);
             }
-            
+
             if (level == 2 && vaddr != val_addr)
             {
                 /*if (val_addr - DRAM + 0x1000 > DRAM_SIZE)
                 {
-                    printf("BAD MAPPING! %016llx out of bounds\n", val_addr);            
+                    printf("BAD MAPPING! %016llx out of bounds\n", val_addr);
                 }*/
 
                 //uc_err err = uc_mem_map_wrap(uc, vaddr & 0xFFFFFFFF, 0x1000, UC_PROT_ALL, paddr_to_alloc(val_addr)); //TODO perms
                 //if (err)
                     //printf("error %u\n", err);
-                    
+
                 //err = uc_mem_map_wrap(uc, vaddr, 0x1000, UC_PROT_ALL, paddr_to_alloc(val_addr)); //TODO perms
                 //if (err)
                     //printf("error %u\n", err);
@@ -178,7 +178,7 @@ void uc_mmu_walk(uc_engine *uc, uint64_t addr)
     // TODO: read granule size, default is 0x1000
     printf("ttbr0\n");
     uc_mmu_level_iterate(uc, ttbr0 & 0xFFFFFFFF, 0, 0, addr);
-    
+
     printf("ttbr1\n");
     uc_mmu_level_iterate(uc, ttbr1 & 0xFFFFFFFF, 0, 0, addr);
 }
@@ -263,7 +263,7 @@ void uc_print_regs(uc_engine *uc)
     uint64_t x9, x10, x11, x12, x13, x14, x15, x16;
     uint64_t x17, x18, x19, x20, x21, x22, x23, x24;
     uint64_t x25, x26, x27, x28, fp, lr, sp, pc;
-    
+
     uc_reg_read(uc, UC_ARM64_REG_X0, &x0);
     uc_reg_read(uc, UC_ARM64_REG_X1, &x1);
     uc_reg_read(uc, UC_ARM64_REG_X2, &x2);
@@ -340,8 +340,8 @@ void uc_print_regs(uc_engine *uc)
     printf("lr  %16.16llx ", lr);
     printf("sp  %16.16llx ", sp);
     printf("pc  %16.16llx ", pc);
-    
-    
+
+
     printf("\n");
 }
 
@@ -373,9 +373,9 @@ static void hook_exception(uc_engine *uc, uint32_t exceptno, void *user_data)
     {
         //printf("Kernel SMC (1) @ 0x%016llx (core %u): 0x%x\n", pc, uc_get_core(uc), args[0]);
         //uc_print_regs(uc);
-        
+
         //srand(time(NULL));
-        
+
         bool has_config = true;
         uint64_t pc;
         uint64_t config_val;
@@ -386,7 +386,7 @@ static void hook_exception(uc_engine *uc, uint32_t exceptno, void *user_data)
             case 0xC3000005:
                 printf("Core %u: smcGetRandomBytes called (size %x)\n", uc_get_core(uc), args[1]);
                 args[0] = 0;
-                
+
                 tmp = (uint32_t*)malloc(0x38);
                 for (int i = 0; i < 0x38 / 4; i++)
                 {
@@ -398,7 +398,7 @@ static void hook_exception(uc_engine *uc, uint32_t exceptno, void *user_data)
             case 0xc3000008:
                 printf("Core %u: smcReadWriteRegister called (reg %016llx, mask %08x, val %08x)\n", uc_get_core(uc), args[1], args[2], args[3]);
                 args[0] = 0;
-                
+
                 if (!args[2]) // read
                 {
                     uc_mem_read(uc, args[1], &args[1], 4);
@@ -407,22 +407,22 @@ static void hook_exception(uc_engine *uc, uint32_t exceptno, void *user_data)
                 {
                     uc_mem_write(uc, args[1], &args[3], 4);
                 }
-                
+
                 break;
             case 0xc4000003:
                 printf("Core %u: smcCpuOn called (cpu %u, entry %016llx, context %016llx)\n", uc_get_core(uc), args[1], args[2], args[3]);
                 args[0] = 0;
-                
+
                 pc = args[2];
                 uc_reg_write(cores[args[1]], UC_ARM64_REG_PC, &pc);
                 cores_online[args[1]] = true;
-                
+
                 //TODO context
-                
+
                 break;
             case 0xc3000004:
                 printf("Core %u: smcGetConfig called (config_item %u)\n", uc_get_core(uc), args[1]);
-                
+
                 switch (args[1])
                 {
                     case 1: //disableprogramverification
@@ -440,8 +440,8 @@ static void hook_exception(uc_engine *uc, uint32_t exceptno, void *user_data)
                     default:
                         has_config = false;
                 }
-                
-                
+
+
                 if (has_config)
                 {
                     args[1] = config_val;
@@ -479,9 +479,9 @@ static void hook_exception(uc_engine *uc, uint32_t exceptno, void *user_data)
 
         int svcno = (svc & 0xFFF) >> 5;
         printf("SVC #0x%02x @ 0x%016x (core %u)\n", svcno, pc, uc_get_core(uc));
-        
+
         //trace_code = true;
-        
+
         static int printcnt = 0;
         /*if (svcno == 0x27) // svcOutputDebugString
         {
@@ -523,7 +523,7 @@ static void hook_exception(uc_engine *uc, uint32_t exceptno, void *user_data)
         printf("Unknown exception (%u) @ 0x%016llx (core %u): 0x%x (val at pc %08x)\n", exceptno, pc, uc_get_core(uc), args[0], test);
         uc_print_regs(uc);
     }
-    
+
     uc_reg_write(uc, UC_ARM64_REG_X0, &args[0]);
     uc_reg_write(uc, UC_ARM64_REG_X1, &args[1]);
     uc_reg_write(uc, UC_ARM64_REG_X2, &args[2]);
@@ -532,9 +532,9 @@ static void hook_exception(uc_engine *uc, uint32_t exceptno, void *user_data)
     uc_reg_write(uc, UC_ARM64_REG_X5, &args[5]);
     uc_reg_write(uc, UC_ARM64_REG_X6, &args[6]);
     uc_reg_write(uc, UC_ARM64_REG_X7, &args[7]);
-    
+
     //uc_print_regs(uc);
-    
+
     pc += 4;
     uc_reg_write(uc, UC_ARM64_REG_PC, &pc);
 }
@@ -560,17 +560,17 @@ static void hook_code(uc_engine *uc, uint64_t address, uint32_t size, void *user
         printf(">>> Core %u: Tracing instruction at 0x%"PRIx64 ", instruction size = 0x%x\n", uc_get_core(uc), address, size);
         //uc_print_regs(uc);
     }
-       
+
     if (address == 0xFFFFFFFF00003B80 || address == 0xFFFFFFFF00003B80+8 || address == 0xFFFFFFFF00000118)
         uc_print_regs(uc);
-       
+
     /*if (address == )
     {
         printf("%llx, %llx\n", last_pc[0], last_pc[1]);
         //trace_code = true;
         uc_print_regs(uc);
     }*/
-    
+
     last_pc[1] = last_pc[0];
     last_pc[0] = address;
 }
@@ -579,7 +579,7 @@ static void hook_memrw(uc_engine *uc, uc_mem_type type, uint64_t addr, int size,
 {
     if (value != 0x31494e49) return;
 
-    switch(type) 
+    switch(type)
     {
         default: break;
         case UC_MEM_READ:
@@ -608,7 +608,7 @@ static bool hook_mem_invalid(uc_engine *uc, uc_mem_type type, uint64_t address, 
             printf(">>> Core %u: Missing memory is being READ at 0x%"PRIx64 ", data size = %u, data value = 0x%"PRIx64 "\n",
                          uc_get_core(uc), address, size, value);
             //uc_print_regs(uc);
-            
+
             return false;
         case UC_MEM_WRITE_UNMAPPED:
             printf("Walking TTBs for address...\n");
@@ -616,16 +616,16 @@ static bool hook_mem_invalid(uc_engine *uc, uc_mem_type type, uint64_t address, 
             uc_mmu_walk(cores[1], address);
             uc_mmu_walk(cores[2], address);
             uc_mmu_walk(cores[3], address);
-        
+
             printf(">>> Core %u: Missing memory is being WRITE at 0x%"PRIx64 ", data size = %u, data value = 0x%"PRIx64 "\n",
                          uc_get_core(uc), address, size, value);
             //uc_print_regs(uc);
-            
+
             return false;
         case UC_ERR_FETCH_UNMAPPED:
             printf("Walking TTBs for address...\n");
             uc_mmu_walk(uc, address);
-        
+
             printf(">>> Core %u: Missing memory is being EXEC at 0x%"PRIx64 ", data size = %u, data value = 0x%"PRIx64 "\n",
                          uc_get_core(uc), address, size, value);
             return false;
@@ -643,11 +643,11 @@ static void uc_reg_init(uc_engine *uc, int core)
     {
         zero = 0x0;
         uc_reg_read(uc, i, &zero);
-        
+
         //if (zero)
             //printf("%u, %x %u\n", i, zero, UC_ARM64_REG_SCTLR_EL1);
     }
-    
+
     uint32_t x;
     uc_reg_read(uc, UC_ARM64_REG_CPACR_EL1, &x);
     x |= 0x300000; // set FPEN bit
@@ -665,9 +665,9 @@ static uc_err uc_init(uc_engine **uc, int core)
                 err, uc_strerror(err));
         return err;
     }
-    
+
     uc_reg_init(*uc, core);
-    
+
     mmio_timer_init(*uc);
     mmio_host1x_init(*uc);
     mmio_system_init(*uc);
@@ -678,10 +678,10 @@ static uc_err uc_init(uc_engine **uc, int core)
     mmio_car_init(*uc);
     mmio_pinmux_init(*uc);
     mmio_uart_init(*uc);
-    
+
     uc_mem_map_ptr(*uc, IRAM, IRAM_SIZE, UC_PROT_ALL, iram);
     uc_mem_map_ptr(*uc, TZRAM, TZRAM_SIZE, UC_PROT_ALL, tzram);
-    
+
     // hooks
     //uc_hook_add(*uc, &trace1, UC_HOOK_BLOCK, (void*)hook_block, NULL, 1, 0);
     uc_hook_add(*uc, &trace2, UC_HOOK_CODE, (void*)hook_code, NULL, 1, 0);
@@ -696,24 +696,24 @@ static uc_err uc_core_run_slice(uc_engine *uc)
     uc_err err;
     uint64_t pc;
     uc_reg_read(uc, UC_ARM64_REG_PC, &pc);
-    
+
     int instrs = 0x10000;
     if (uc_get_core(uc) == 0)
         instrs = 0x10000;
-    
+
     // uc cores cannot share mappings, otherwise cores can flush
     // bad data, so just unmap after each slice has run
     uc_mem_map_ptr(uc, DRAM, DRAM_SIZE, UC_PROT_ALL, dram);
     uc_mem_map_ptr(uc, DRAM + (DRAM_SIZE * 1), DRAM_SIZE, UC_PROT_ALL, dram_2);
     uc_mem_map_ptr(uc, DRAM + (DRAM_SIZE * 2), DRAM_SIZE, UC_PROT_ALL, dram_3);
     //uc_mem_map_ptr(uc, DRAM + (DRAM_SIZE * 3), DRAM_SIZE, UC_PROT_ALL, dram_4);
-    
+
     err = uc_emu_start(uc, pc, 0, 0, instrs);
     if (err) {
         printf("Failed on uc_emu_start() with error returned: %s\n", uc_strerror(err));
         uc_quit = true;
     }
-    
+
     uc_mem_unmap(uc, DRAM, DRAM_SIZE);
     uc_mem_unmap(uc, DRAM + (DRAM_SIZE * 1), DRAM_SIZE);
     uc_mem_unmap(uc, DRAM + (DRAM_SIZE * 2), DRAM_SIZE);
@@ -725,7 +725,7 @@ static void uc_run_stuff(uc_engine **cores, uint64_t start)
     uc_err err = UC_ERR_OK;
     uint64_t pc = start;
     uc_reg_write(cores[0], UC_ARM64_REG_PC, &pc);
-    
+
     uint64_t vbar;
 
     while (!err && !uc_quit)
@@ -741,46 +741,46 @@ static void uc_run_stuff(uc_engine **cores, uint64_t start)
             if (err) break;
 
         }
-        if (uc_quit) break;   
+        if (uc_quit) break;
     }
-    
+
     printf("uc_core_run_slice return error %s\n", uc_strerror(err));
 
     printf(">>> Emulation done. Below is the CPU contexts\n");
-    
+
     for (int i = 0; i < 4; i++)
     {
         printf("Core %u:\n", i);
         uc_print_regs(cores[i]);
     }
-    
+
 #if 0
     uint64_t zero = 0;
     for (int i = UC_ARM64_REG_PC+1; i < UC_ARM64_REG_ENDING; i++)
     {
         zero = 0x0;
         uc_reg_read(cores[0], i, &zero);
-        
+
         //if (zero)
           //  printf("%u, %x\n", i, zero);
     }
-    
+
     uc_print_regs(cores[0]);
 
     uint64_t sp;
     uc_reg_read(cores[0], UC_ARM64_REG_SP, &sp);
     uc_mmu_walk(cores[0], sp);
-    
+
     printf("sp %016llx, %016llx\n", sp, uc_redirect(cores[0], sp));
-    
+
     uint64_t val = 0;
     for (int i = 0; i < 0x100; i++)
     {
         uc_err err = uc_mem_read(cores[0], sp+i*8, &val, 8);
         if (err) break;
-        
-        
-        
+
+
+
         printf("%016llx\n", uc_redirect(cores[0], val));
     }
 #endif
@@ -788,7 +788,7 @@ static void uc_run_stuff(uc_engine **cores, uint64_t start)
     //fwrite(dram, DRAM_SIZE, 1, dump);
     //fwrite(dram + 0x1000000, 0x1000000, 1, dump);
     //fclose(dump);
-    
+
     // Print translation tables
     //uc_mmu_walk(cores[0], 0);
 }
@@ -796,17 +796,17 @@ static void uc_run_stuff(uc_engine **cores, uint64_t start)
 static void load_processes()
 {
     std::string path = "kips";
-    
+
     std::list<std::string> kips;
-    
+
     for (auto & p : std::filesystem::directory_iterator(path))
         kips.push_back(p.path().string());
-    
+
     int num_processes = kips.size();
     kips.sort();
-    
+
     if (!num_processes) return;
-    
+
     ini_header* ini = (ini_header*)(paddr_to_alloc(PADDRESS_800));
     ini->magic = 0x31494E49;
     ini->size = sizeof(ini_header);
@@ -820,16 +820,16 @@ static void load_processes()
             fseek(f, 0, SEEK_END);
             auto fsize = ftell(f);
             rewind(f);
-        
+
             fread(paddr_to_alloc(PADDRESS) + ini->size, fsize, 1, f);
             fclose(f);
-            
+
             ini->size += fsize;
-            
+
             ini->count++;
         }
     }
-    
+
     printf("size %x\n", ini->size);
 }
 
@@ -844,26 +844,26 @@ static bool mem_init()
     printf("dram_2 mapped at %p\n", dram_2);
     printf("dram_3 mapped at %p\n", dram_3);
     printf("dram_4 mapped at %p\n", dram_4);
-    
+
     if (dram == (void*)-1 || dram_2 == (void*)-1 || dram_3 == (void*)-1 || dram_4 == (void*)-1)
         return false;
-    
+
     iram = malloc(IRAM_SIZE);
     tzram = malloc(TZRAM_SIZE);
-    
+
     if (!iram || !tzram)
         return false;
 
     FILE* f_hos = fopen("0_saltedkernel_80060000.bin", "rb");
     fread(paddr_to_alloc(KADDRESS_800), 0x1000000, 1, f_hos);
     fclose(f_hos);
-    
+
     FILE* f_proc = fopen("1_process_800F5000.bin", "rb");
     fread(paddr_to_alloc(PADDRESS_800), 0x1000000, 1, f_proc);
     fclose(f_proc);
-    
+
     //load_processes();
-    
+
     return true;
 }
 
@@ -882,7 +882,7 @@ int main(int argc, char **argv, char **envp)
 
     cores_online[0] = true;
     uc_run_stuff(cores, KADDRESS_800);
-    
+
     //uc_mmu_walk(cores[0], 0);
     uint64_t val = 0x12345;
     for (int i = 0; i < 4; i++)
@@ -894,17 +894,17 @@ int main(int argc, char **argv, char **envp)
         uc_reg_read(cores[i], UC_ARM64_REG_TPIDR_EL0, &val);
         printf("%u tpidr %016llx\n", i, val);
     }
-    
+
     for (int i = 0; i < 4; i++)
     {
         uc_close(cores[i]);
     }
-    
+
     //FILE* dump = fopen("dram_dump_app.bin", "wb");
     //fwrite(dram, 0x4000000, 1, dump);
     //fwrite(dram + 0x1000000, 0x1000000, 1, dump);
     //fclose(dump);
-    
+
     munmap(dram, DRAM_SIZE);
     munmap(dram_2, DRAM_SIZE);
     munmap(dram_3, DRAM_SIZE);
